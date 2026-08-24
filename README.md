@@ -8,7 +8,7 @@
 >
 > Use at your own risk - some features may not work as expected.
 
----
+---加了一个 chinadaily 查询引擎，从 gmya.net API 获取每日热搜
 
 ## Table of Contents
 
