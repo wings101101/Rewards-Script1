@@ -64,42 +64,43 @@ export function normalizeQueryKey(query: string): string {
 export class QueryCore {
     constructor(private bot: MicrosoftRewardsBot) {}
 
-    async queryManager(options: QueryManagerOptions = {}): Promise<string[]> {
-        let {
-            shuffle = false,
-            sourceOrder = ['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local'],
-            langCode = 'en',
-            geoLocale = 'US'
-        } = options
+async queryManager(options: QueryManagerOptions = {}): Promise<string[]> {
+    let {
+        shuffle = false,
+        sourceOrder = ['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local'],
+        langCode = 'en',
+        geoLocale = 'US'
+    } = options
 
-        if (geoLocale === 'CN') {
-            this.bot.logger.debug(
-                this.bot.isMobile,
-                'QUERY-MANAGER',
-                'CN geoLocale detected, using customCN with local fallback'
-            )
-            // CN 地区优先从 customCN 获取，仅当完全失败时才 fallback 到 local
-            const cnTopics = await this.getCustomCNTrends().catch(() => [] as string[])
-            if (cnTopics.length > 0) {
-                const topics = this.normalizeAndDedupe(cnTopics)
-                if (topics.length) {
+    // CN 地区专用：优先使用 chinadaily
+    if (geoLocale === 'CN') {
+        this.bot.logger.debug(
+            this.bot.isMobile,
+            'QUERY-MANAGER',
+            'CN geoLocale detected, using chinadaily as primary source'
+        )
+        const cnTopics = await this.getChinaDailyHot().catch(() => [] as string[])
+        if (cnTopics.length > 0) {
+            const topics = this.normalizeAndDedupe(cnTopics)
+            if (topics.length) {
+                if (shuffle) {
                     this.bot.utils.shuffleArray(topics)
-                    this.bot.logger.debug(
-                        this.bot.isMobile,
-                        'QUERY-MANAGER',
-                        `Built CN topic pool from customCN | count=${topics.length}`
-                    )
-                    return topics
                 }
+                this.bot.logger.debug(
+                    this.bot.isMobile,
+                    'QUERY-MANAGER',
+                    `Using chinadaily topics | count=${topics.length}`
+                )
+                return topics
             }
-
-            this.bot.logger.warn(
-                this.bot.isMobile,
-                'QUERY-MANAGER',
-                'customCN returned no results, falling back to local query list'
-            )
-            sourceOrder = ['local']
         }
+        this.bot.logger.warn(
+            this.bot.isMobile,
+            'QUERY-MANAGER',
+            'chinadaily returned no results, falling back to local'
+        )
+        sourceOrder = ['local']
+    }
 
         try {
             this.bot.logger.debug(
@@ -108,14 +109,10 @@ export class QueryCore {
                 `Building main topic pool | sources=${sourceOrder.join(',')} | shuffle=${shuffle} | lang=${langCode} | geo=${geoLocale}`
             )
 
-            const sourceHandlers: Record<QueryEngine, () => Promise<string[]> | string[]> = {
-                google: () => this.getGoogleTrends(geoLocale.toUpperCase()).catch(() => []),
-                wikipedia: () => this.getWikipediaTrending(langCode).catch(() => []),
-                wikirandom: () => this.getWikipediaRandom(langCode).catch(() => []),
-                hackernews: () => this.getHackerNewsTopics().catch(() => []),
-                reddit: () => this.getRedditTopics().catch(() => []),
+            const sourceHandlers: Record<string, () => Promise<string[]> | string[]> = {
                 local: () => this.getLocalQueryList(),
-                customCN: () => this.getCustomCNTrends().catch(() => [])
+                customCN: () => this.getCustomCNTrends().catch(() => []),
+                chinadaily: () => this.getChinaDailyHot().catch(() => [])  // ← 新增这一行
             }
 
             const isRss = (source: string) => source === 'rss' || source.startsWith('rss.')
@@ -562,7 +559,69 @@ export class QueryCore {
 
         return entries.map(entry => stripHtml(readTitle(entry?.title)).trim()).filter(Boolean)
     }
+// src/functions/QueryEngine.ts
 
+/**
+ * 从 gmya.net API 获取中国每日热词（需要 API Key）
+ * 聚合百度热搜和头条热搜
+ */
+async getChinaDailyHot(): Promise<string[]> {
+    const appkey = this.bot.config.chinaApiAppkey || process.env.CHINA_API_APPKEY;
+    if (!appkey) {
+        this.bot.logger.warn(this.bot.isMobile, 'CHINA-DAILY', 'No API Key provided');
+        return [];
+    }
+
+    const allTopics: string[] = [];
+    const apis = [
+        'https://api.gmya.net/Api/BaiduHot',
+        'https://api.gmya.net/Api/TouTiaoHot'
+    ];
+
+    for (const apiUrl of apis) {
+        try {
+            const url = new URL(apiUrl);
+            url.searchParams.set('appkey', appkey);
+
+            const response = await fetch(url.toString(), {
+                signal: AbortSignal.timeout(15000)
+            });
+
+            if (!response.ok) continue;
+
+            const data = await response.json();
+
+            // 提取 data 数组中的所有 title
+            if (data && data.data && Array.isArray(data.data)) {
+                const titles = data.data
+                    .map((item: any) => item.title || item.name || '')
+                    .filter((t: string) => t && t.length > 1);
+                
+                this.bot.logger.debug(
+                    this.bot.isMobile,
+                    'CHINA-DAILY',
+                    `Got ${titles.length} topics from ${apiUrl}`
+                );
+                allTopics.push(...titles);
+            }
+        } catch (error) {
+            this.bot.logger.warn(
+                this.bot.isMobile,
+                'CHINA-DAILY',
+                `Failed to fetch from ${apiUrl}: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+    }
+
+    // 去重
+    const unique = [...new Set(allTopics)];
+    this.bot.logger.info(
+        this.bot.isMobile,
+        'CHINA-DAILY',
+        `Total unique topics: ${unique.length}`
+    );
+    return unique;
+}
     getLocalQueryList(): string[] {
         try {
             const file = path.join(__dirname, './search-queries.json')

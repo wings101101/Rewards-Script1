@@ -44,7 +44,7 @@ const DelaySchema = z
     })
 
 const QueryEngineSchema = z.union([
-    z.enum(['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local', 'customCN']),
+    z.enum(['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local', 'customCN', 'chinadaily']),
     z
         .string()
         .regex(/^rss(\.[A-Za-z0-9_-]+){0,2}$/, 'Invalid rss selector (use rss, rss.<site>, or rss.<site>.<endpoint>)')
@@ -133,6 +133,7 @@ export const ConfigSchema = z.object({
         })
         .default({ urlReward: true, searchOnBing: true }),
     searchOnBingLocalQueries: z.boolean(),
+    chinaApiAppkey: z.string().optional(),
     globalTimeout: NumberOrString,
     searchSettings: z.object({
         scrollRandomResults: z.boolean(),
@@ -283,7 +284,7 @@ const defaultConfig: Config = {
         maxBonusSearches: 110,
         parallelSearching: true,
         clusterSearch: true,
-        queryEngines: ['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local', 'customCN'],
+        queryEngines: ['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local', 'customCN', 'chinadaily'],
         searchResultVisitTime: '10sec',
         searchDelay: { min: '30sec', max: '1min' },
         readDelay: { min: '30sec', max: '1min' }

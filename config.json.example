@@ -1,6 +1,6 @@
 {
     "sessionPath": "sessions",
-    "headless": true,
+    "headless": false,
     "clusters": 1,
     "errorDiagnostics": false,
     "ensureStreakProtection": true,
@@ -29,38 +29,29 @@
         "searchOnBing": true
     },
     "searchOnBingLocalQueries": false,
-    "globalTimeout": "30sec",
+    "globalTimeout": "50sec",
     "searchSettings": {
-        "scrollRandomResults": false,
-        "clickRandomResults": false,
+        "scrollRandomResults": true,
+        "clickRandomResults": true,
         "runOnZeroPoints": false,
         "maxBonusSearches": 110,
-        "parallelSearching": true,
+        "parallelSearching": false,
         "clusterSearch": true,
         "queryEngines": [
-            "google",
-            "wikipedia",
-            "wikirandom",
-            "hackernews",
-            "reddit",
-            "local",
-            "customCN",
-            "rss.googleTrends",
-            "rss.googleNews",
-            "rss.bbc",
-            "rss.guardian.world",
-            "rss.theVerge.all"
+            "chinadaily",
+            "local"
         ],
-        "searchResultVisitTime": "10sec",
+        "searchResultVisitTime": "20sec",
         "searchDelay": {
             "min": "30sec",
             "max": "1min"
         },
         "readDelay": {
-            "min": "30sec",
-            "max": "1min"
+            "min": "60sec",
+            "max": "4min"
         }
     },
+    "chinaApiAppkey": "YOUR_API_KEY_HERE",
     "experimental": {
         "apiSearch": false,
         "apiSearchOnBing": false,

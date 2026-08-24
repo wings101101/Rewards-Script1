@@ -19,7 +19,7 @@ export interface Config {
     webhook: ConfigWebhook
 }
 
-export type QueryEngine = 'google' | 'wikipedia' | 'wikirandom' | 'hackernews' | 'reddit' | 'local' | 'customCN'
+export type QueryEngine =  'google' | 'wikipedia' | 'wikirandom' | 'hackernews' | 'reddit' | 'chinadaily' | 'local' | 'customCN'
 
 // RSS feeds are selected with a dotted path: 'rss' (every catalogued feed),
 // 'rss.<site>' (every feed for that site), or 'rss.<site>.<endpoint>' (one feed).
@@ -44,6 +44,10 @@ export interface ConfigDelay {
     max: number | string
 }
 
+export interface Config {
+    // ... 已有字段
+    chinaApiAppkey?: string;   // ← 新增这一行
+}
 export interface ConfigExperimental {
     apiSearch: boolean
     apiSearchOnBing: boolean
